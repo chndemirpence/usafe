@@ -7,9 +7,8 @@
 > reorganized "Open Internet Stack" effort. This draft is prepared now so
 > submission can happen the day the call reopens.
 >
-> Deliberately scoped DIFFERENT from USAFE's pending OTF Internet Freedom
-> Fund application (#22839, concept-note stage) — see "Other funding sources"
-> below for why, and why that's honest rather than double-dipping.
+> Scoped as a component-extraction effort (USAFE Detectors), distinct from
+> the main USAFE application itself.
 
 ---
 
