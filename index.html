@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="USAFE - Universal Security And Freedom Evaluator. Client-side privacy toolkit.">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>USAFE - Internet Freedom & Privacy Toolkit</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/shield.svg">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader">
+            <div class="shield-icon">🛡️</div>
+            <h1>USAFE</h1>
+            <p>Initializing security checks...</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="shield">🛡️</span>
+                <h1>USAFE</h1>
+                <span class="tagline" data-i18n="header.tagline">Universal Security And Freedom Evaluator</span>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-module="dashboard">
+                    <span class="icon">📊</span>
+                    <span class="label" data-i18n="nav.dashboard">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-module="censorship">
+                    <span class="icon">🚫</span>
+                    <span class="label" data-i18n="nav.censorship">Censorship</span>
+                </button>
+                <button class="nav-btn" data-module="surveillance">
+                    <span class="icon">👁️</span>
+                    <span class="label" data-i18n="nav.surveillance">Surveillance</span>
+                </button>
+                <button class="nav-btn" data-module="secure-comm">
+                    <span class="icon">🔐</span>
+                    <span class="label" data-i18n="nav.secureComm">Secure Comm</span>
+                </button>
+            </nav>
+            <div class="header-actions">
+                <button id="theme-toggle" class="icon-btn" title="Toggle theme">🌙</button>
+                <button id="export-btn" class="icon-btn" title="Export report">📤</button>
+                <select id="lang-select" class="lang-select">
+                    <option value="en">EN</option>
+                    <option value="tr">TR</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Dashboard Module -->
+            <section id="dashboard" class="module active">
+                <div class="module-header">
+                    <h2 data-i18n="dashboard.title">📊 Privacy Dashboard</h2>
+                    <p data-i18n="dashboard.subtitle">Overview of your digital privacy status</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Overall Score Card -->
+                    <div class="card score-card">
+                        <h3>Overall Privacy Score</h3>
+                        <div class="score-ring">
+                            <svg viewBox="0 0 100 100">
+                                <circle class="score-bg" cx="50" cy="50" r="45"></circle>
+                                <circle class="score-fill" cx="50" cy="50" r="45" id="score-circle"></circle>
+                            </svg>
+                            <div class="score-value" id="overall-score">--</div>
+                        </div>
+                        <p class="score-label" id="score-label">Analyzing...</p>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="card stats-card">
+                        <h3>Quick Analysis</h3>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <span class="stat-icon" id="censorship-status">⏳</span>
+                                <span class="stat-label">Network Freedom</span>
+                                <span class="stat-value" id="censorship-value">Checking...</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-icon" id="fingerprint-status">⏳</span>
+                                <span class="stat-label">Fingerprint Risk</span>
+                                <span class="stat-value" id="fingerprint-value">Checking...</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-icon" id="tracking-status">⏳</span>
+                                <span class="stat-label">Tracker Exposure</span>
+                                <span class="stat-value" id="tracking-value">Checking...</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-icon" id="encryption-status">⏳</span>
+                                <span class="stat-label">Crypto Support</span>
+                                <span class="stat-value" id="encryption-value">Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Your Info Card -->
+                    <div class="card info-card">
+                        <h3>Your Browser Info</h3>
+                        <div class="info-list">
+                            <div class="info-item">
+                                <span class="info-label">IP Address</span>
+                                <span class="info-value" id="ip-address">Detecting...</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Browser</span>
+                                <span class="info-value" id="browser-info">--</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">OS</span>
+                                <span class="info-value" id="os-info">--</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Screen</span>
+                                <span class="info-value" id="screen-info">--</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Timezone</span>
+                                <span class="info-value" id="timezone-info">--</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Language</span>
+                                <span class="info-value" id="language-info">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations Card -->
+                    <div class="card recommendations-card">
+                        <h3>🔧 Recommendations</h3>
+                        <ul class="recommendations-list" id="recommendations-list">
+                            <li class="loading">Analyzing your setup...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary run-all-btn" id="run-all-tests">
+                    <span class="icon">▶️</span>
+                    <span data-i18n="dashboard.runAll">Run All Tests</span>
+                </button>
+            </section>
+
+            <!-- Censorship Module -->
+            <section id="censorship" class="module">
+                <div class="module-header">
+                    <h2 data-i18n="censorship.title">🚫 Censorship & Blocking Detector</h2>
+                    <p data-i18n="censorship.subtitle">Detect network interference, DNS manipulation, and blocked services</p>
+                </div>
+
+                <div class="card scope-notice">
+                    <p>⚠️ <strong>Scope of these tests:</strong> a browser can only measure so much - even OONI's own browser-based tool (OONI Probe Web) publicly documents higher false-positive/negative rates than their native apps, and is explicitly <em>not</em> a replacement for them. Treat these results as an indicator worth investigating, not proof of censorship. In particular: connection-level blocking (TCP resets, SNI filtering - the technique most national firewalls actually use) cannot be distinguished from a CORS restriction or an ad/tracker blocker from inside a browser tab.</p>
+                </div>
+
+                <div class="test-grid">
+                    <!-- DNS Test Card -->
+                    <div class="card test-card">
+                        <div class="test-header">
+                            <h3>🌐 DNS Manipulation Test</h3>
+                            <span class="test-status" id="dns-status">Pending</span>
+                        </div>
+                        <p class="test-desc">Compares DNS responses from multiple resolvers to detect manipulation. If every resolver fails, that itself is a signal (DoH endpoints are commonly blocked) - it does not mean DNS is clean.</p>
+                        <div class="test-results" id="dns-results">
+                            <div class="result-placeholder">Click "Run Test" to start</div>
+                        </div>
+                        <button class="btn btn-secondary" data-test="dns">Run Test</button>
+                    </div>
+
+                    <!-- WebRTC Leak Test -->
+                    <div class="card test-card">
+                        <div class="test-header">
+                            <h3>📡 WebRTC Leak Test</h3>
+                            <span class="test-status" id="webrtc-status">Pending</span>
+                        </div>
+                        <p class="test-desc">Checks if your real IP is exposed through WebRTC</p>
+                        <div class="test-results" id="webrtc-results">
+                            <div class="result-placeholder">Click "Run Test" to start</div>
+                        </div>
+                        <button class="btn btn-secondary" data-test="webrtc">Run Test</button>
+                    </div>
+
+                    <!-- Site Blocking Test -->
+                    <div class="card test-card">
+                        <div class="test-header">
+                            <h3>🔒 Site Blocking Test</h3>
+                            <span class="test-status" id="blocking-status">Pending</span>
+                        </div>
+                        <p class="test-desc">Tests connectivity to commonly blocked sites. A site can also fail here because of an ad/tracker blocker or a browser's own tracking-protection list, not just state censorship.</p>
+                        <div class="test-results" id="blocking-results">
+                            <div class="result-placeholder">Click "Run Test" to start</div>
+                        </div>
+                        <button class="btn btn-secondary" data-test="blocking">Run Test</button>
+                    </div>
+
+                    <!-- VPN Leak Check -->
+                    <div class="card test-card">
+                        <div class="test-header">
+                            <h3>🛡️ VPN Leak Check</h3>
+                            <span class="test-status" id="vpn-status">Pending</span>
+                        </div>
+                        <p class="test-desc">Checks for WebRTC/DNS leaks that would expose your real IP through a VPN. This does not detect whether a VPN is active - only whether an active one is leaking.</p>
+                        <div class="test-results" id="vpn-results">
+                            <div class="result-placeholder">Click "Run Test" to start</div>
+                        </div>
+                        <button class="btn btn-secondary" data-test="vpn">Run Test</button>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary run-module-btn" id="run-censorship-tests">
+                    <span class="icon">▶️</span>
+                    <span data-i18n="censorship.runAll">Run All Censorship Tests</span>
+                </button>
+            </section>
+
+            <!-- Surveillance Module -->
+            <section id="surveillance" class="module">
+                <div class="module-header">
+                    <h2 data-i18n="surveillance.title">👁️ Surveillance & Tracking Detector</h2>
+                    <p data-i18n="surveillance.subtitle">Analyze how unique your browser fingerprint is and detect trackers</p>
+                </div>
+
+                <div class="fingerprint-overview">
+                    <div class="card uniqueness-card">
+                        <h3>Browser Uniqueness</h3>
+                        <div class="uniqueness-meter">
+                            <div class="meter-bar">
+                                <div class="meter-fill" id="uniqueness-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="meter-labels">
+                                <span>Common</span>
+                                <span>Unique</span>
+                            </div>
+                        </div>
+                        <p class="uniqueness-text" id="uniqueness-text">
+                            Your browser fingerprint will be analyzed...
+                        </p>
+                    </div>
+                </div>
+
+                <div class="fingerprint-grid">
+                    <!-- Canvas Fingerprint -->
+                    <div class="card fp-card">
+                        <div class="fp-header">
+                            <span class="fp-icon">🎨</span>
+                            <h4>Canvas Fingerprint</h4>
+                            <span class="fp-status" id="canvas-status">--</span>
+                        </div>
+                        <div class="fp-value" id="canvas-hash">Not tested</div>
+                        <div class="fp-detail" id="canvas-detail"></div>
+                    </div>
+
+                    <!-- WebGL Fingerprint -->
+                    <div class="card fp-card">
+                        <div class="fp-header">
+                            <span class="fp-icon">🖼️</span>
+                            <h4>WebGL Fingerprint</h4>
+                            <span class="fp-status" id="webgl-status">--</span>
+                        </div>
+                        <div class="fp-value" id="webgl-hash">Not tested</div>
+                        <div class="fp-detail" id="webgl-detail"></div>
+                    </div>
+
+                    <!-- Audio Fingerprint -->
+                    <div class="card fp-card">
+                        <div class="fp-header">
+                            <span class="fp-icon">🔊</span>
+                            <h4>Audio Fingerprint</h4>
+                            <span class="fp-status" id="audio-status">--</span>
+                        </div>
+                        <div class="fp-value" id="audio-hash">Not tested</div>
+                        <div class="fp-detail" id="audio-detail"></div>
+                    </div>
+
+                    <!-- Font Detection -->
+                    <div class="card fp-card">
+                        <div class="fp-header">
+                            <span class="fp-icon">🔤</span>
+                            <h4>Font Detection</h4>
+                            <span class="fp-status" id="fonts-status">--</span>
+                        </div>
+                        <div class="fp-value" id="fonts-count">Not tested</div>
+                        <div class="fp-detail" id="fonts-detail"></div>
+                    </div>
+
+                    <!-- Hardware Info -->
+                    <div class="card fp-card">
+                        <div class="fp-header">
+                            <span class="fp-icon">💻</span>
+                            <h4>Hardware Info</h4>
+                            <span class="fp-status" id="hardware-status">--</span>
+                        </div>
+                        <div class="fp-value" id="hardware-info">Not tested</div>
+                        <div class="fp-detail" id="hardware-detail"></div>
+                    </div>
+
+                    <!-- Plugins -->
+                    <div class="card fp-card">
+                        <div class="fp-header">
+                            <span class="fp-icon">🧩</span>
+                            <h4>Plugins & Extensions</h4>
+                            <span class="fp-status" id="plugins-status">--</span>
+                        </div>
+                        <div class="fp-value" id="plugins-count">Not tested</div>
+                        <div class="fp-detail" id="plugins-detail"></div>
+                    </div>
+                </div>
+
+                <!-- Tracker Detection -->
+                <div class="card tracker-card">
+                    <h3>🕵️ Tracker Detection</h3>
+                    <p>Simulating known tracker patterns to test your protection</p>
+                    <div class="tracker-results" id="tracker-results">
+                        <div class="result-placeholder">Run fingerprint analysis first</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary run-module-btn" id="run-surveillance-tests">
+                    <span class="icon">▶️</span>
+                    <span data-i18n="surveillance.runAll">Run Full Fingerprint Analysis</span>
+                </button>
+            </section>
+
+            <!-- Secure Communication Module -->
+            <section id="secure-comm" class="module">
+                <div class="module-header">
+                    <h2 data-i18n="secureComm.title">🔐 Secure Communication</h2>
+                    <p data-i18n="secureComm.subtitle">End-to-end encrypted messaging - no servers, no tracking</p>
+                </div>
+
+                <div class="comm-tabs">
+                    <button class="comm-tab active" data-tab="encrypt">Encrypt Message</button>
+                    <button class="comm-tab" data-tab="decrypt">Decrypt Message</button>
+                    <button class="comm-tab" data-tab="file">File Encryption</button>
+                </div>
+
+                <!-- Encrypt Tab -->
+                <div class="comm-panel active" id="encrypt-panel">
+                    <div class="card">
+                        <h3>📝 Encrypt a Message</h3>
+                        
+                        <div class="form-group">
+                            <label>Your Message</label>
+                            <textarea id="encrypt-message" placeholder="Enter your secret message here..." rows="5"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Encryption Method</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="encrypt-method" value="password" checked>
+                                    <span>Password-based (AES-256-GCM)</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="encrypt-method" value="keypair">
+                                    <span>Key Pair (ECDH + AES)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="password-group">
+                            <label>Password</label>
+                            <div class="password-input">
+                                <input type="password" id="encrypt-password" placeholder="Strong password">
+                                <button class="icon-btn show-password" type="button">👁️</button>
+                                <button class="icon-btn generate-password" type="button" title="Generate strong password">🎲</button>
+                            </div>
+                            <div class="password-strength" id="password-strength"></div>
+                        </div>
+
+                        <div class="form-group" id="keypair-group" style="display:none;">
+                            <label>Recipient's Public Key</label>
+                            <textarea id="recipient-pubkey" placeholder="Paste recipient's public key here..." rows="3"></textarea>
+                            <button class="btn btn-small" id="generate-keypair">Generate My Key Pair</button>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Options</label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="add-expiry">
+                                <span>Add expiry time</span>
+                            </label>
+                            <div id="expiry-options" style="display:none;">
+                                <select id="expiry-time">
+                                    <option value="3600">1 hour</option>
+                                    <option value="86400">24 hours</option>
+                                    <option value="604800">7 days</option>
+                                    <option value="2592000">30 days</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" id="encrypt-btn">
+                            <span class="icon">🔒</span>
+                            Encrypt Message
+                        </button>
+
+                        <div class="output-group" id="encrypt-output" style="display:none;">
+                            <label>Encrypted Message</label>
+                            <textarea id="encrypted-result" readonly rows="5"></textarea>
+                            <div class="output-actions">
+                                <button class="btn btn-secondary" id="copy-encrypted">📋 Copy</button>
+                                <button class="btn btn-secondary" id="qr-encrypted">📱 QR Code</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decrypt Tab -->
+                <div class="comm-panel" id="decrypt-panel">
+                    <div class="card">
+                        <h3>🔓 Decrypt a Message</h3>
+                        
+                        <div class="form-group">
+                            <label>Encrypted Message</label>
+                            <textarea id="decrypt-input" placeholder="Paste the encrypted message here..." rows="5"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password or Private Key</label>
+                            <div class="password-input">
+                                <input type="password" id="decrypt-password" placeholder="Enter password or paste private key">
+                                <button class="icon-btn show-password" type="button">👁️</button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" id="decrypt-btn">
+                            <span class="icon">🔓</span>
+                            Decrypt Message
+                        </button>
+
+                        <div class="output-group" id="decrypt-output" style="display:none;">
+                            <label>Decrypted Message</label>
+                            <div class="decrypted-result" id="decrypted-result"></div>
+                            <div class="message-meta" id="message-meta"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Encryption Tab -->
+                <div class="comm-panel" id="file-panel">
+                    <div class="card">
+                        <h3>📁 File Encryption</h3>
+                        
+                        <div class="file-drop-zone" id="file-drop-zone">
+                            <div class="drop-icon">📄</div>
+                            <p>Drop a file here or click to select</p>
+                            <input type="file" id="file-input" hidden>
+                        </div>
+
+                        <div class="file-info" id="file-info" style="display:none;">
+                            <span class="file-name" id="file-name"></span>
+                            <span class="file-size" id="file-size"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password</label>
+                            <div class="password-input">
+                                <input type="password" id="file-password" placeholder="Strong password">
+                                <button class="icon-btn show-password" type="button">👁️</button>
+                                <button class="icon-btn generate-password" type="button" title="Generate">🎲</button>
+                            </div>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="encrypt-file-btn" disabled>
+                                <span class="icon">🔒</span>
+                                Encrypt File
+                            </button>
+                            <button class="btn btn-secondary" id="decrypt-file-btn" disabled>
+                                <span class="icon">🔓</span>
+                                Decrypt File
+                            </button>
+                        </div>
+
+                        <div class="file-progress" id="file-progress" style="display:none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="file-progress-fill"></div>
+                            </div>
+                            <span class="progress-text" id="file-progress-text">Processing...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Management -->
+                <div class="card key-card">
+                    <h3>🔑 Key Management</h3>
+                    <div class="key-info">
+                        <p>Your session key pair (ephemeral - lost on page refresh):</p>
+                        <div class="key-display">
+                            <label>Your Public Key (share this)</label>
+                            <textarea id="my-pubkey" readonly rows="2" placeholder="Generate a key pair first"></textarea>
+                            <button class="btn btn-small" id="copy-pubkey">📋 Copy</button>
+                        </div>
+                        <div class="key-actions">
+                            <button class="btn btn-secondary" id="new-keypair">🔄 Generate New Keys</button>
+                            <button class="btn btn-secondary" id="show-qr-key">📱 Show QR Code</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p data-i18n="footer.note">USAFE v1.0 - Encryption, fingerprint analysis, and all other processing happen locally in your browser. The Censorship tests are the exception: those make real network requests (DNS resolvers, IP lookups, the sites being tested) because that's what they measure - see Privacy for details.</p>
+            <p class="footer-links">
+                <a href="#" id="about-link">About</a>
+                <span>•</span>
+                <a href="#" id="privacy-link">Privacy</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="qr-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📱 QR Code</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="qr-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="about-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>About USAFE</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>USAFE</strong> (Universal Security And Freedom Evaluator) is a client-side privacy toolkit.</p>
+                <p>All tests and encryption happen entirely in your browser - no data is ever sent to any server.</p>
+                <h4>Features:</h4>
+                <ul>
+                    <li>🚫 Censorship/Blocking Detection</li>
+                    <li>👁️ Browser Fingerprint Analysis</li>
+                    <li>🔐 End-to-End Encrypted Messaging</li>
+                </ul>
+                <h4>Technical Stack:</h4>
+                <ul>
+                    <li>Pure JavaScript (no frameworks)</li>
+                    <li>Web Crypto API for encryption</li>
+                    <li>No network requests - everything runs locally, including the vendored QR code library</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="privacy-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Privacy</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Nothing you enter here ever leaves your device.</strong> There is no backend for this app - every test, hash, and encryption/decryption operation runs in your browser's own JavaScript engine.</p>
+                <h4>What that means in practice:</h4>
+                <ul>
+                    <li>Messages, passwords, and files you encrypt or decrypt are processed entirely client-side and are never uploaded anywhere.</li>
+                    <li>Key pairs are ephemeral - they exist only in this browser tab's memory and are gone on refresh, unless you copy them out yourself.</li>
+                    <li>Fingerprint and hardware info collected on the Surveillance tab stays on this page; it is only shown to you and, if you choose, included in an exported report you save yourself.</li>
+                </ul>
+                <h4>What does leave your device (and why):</h4>
+                <ul>
+                    <li>The Censorship tests make real network requests - to DNS-over-HTTPS resolvers (Cloudflare/Google/Quad9), IP-lookup services, and the sites being tested - because that's what those tests are measuring. No results from these requests are sent anywhere except back to your own screen.</li>
+                </ul>
+                <p>USAFE is open source - you don't have to take this page's word for it, you can read the code.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils/qrcode.js"></script>
+    <script src="js/utils/crypto.js"></script>
+    <script src="js/utils/network.js"></script>
+    <script src="js/utils/fingerprint.js"></script>
+    <script src="js/modules/censorship.js"></script>
+    <script src="js/modules/surveillance.js"></script>
+    <script src="js/modules/secure-comm.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

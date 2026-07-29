@@ -1,0 +1,18 @@
+{
+    "name": "USAFE - Internet Freedom & Privacy Toolkit",
+    "short_name": "USAFE",
+    "description": "Client-side privacy & security analysis toolkit",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#0a0a0f",
+    "theme_color": "#00d4aa",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "assets/icons/shield.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ],
+    "categories": ["security", "privacy", "utilities"]
+}
