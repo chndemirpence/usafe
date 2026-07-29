@@ -66,9 +66,7 @@ API documentation and worked examples for both modules, plus direct outreach to 
 
 ## Other funding sources
 
-Yes — full disclosure. USAFE also has a pending concept-note application to the Open Technology Fund's Internet Freedom Fund (#22839, submitted 2026-07-29, no decision yet), requesting $24,000 USD for: an independent security audit of USAFE's ECDH/AES-GCM secure-communication module, resilience hardening of the *application's* censorship detector, and fingerprint-scoring calibration against real population data.
-
-These two asks are deliberately scoped not to overlap. OTF's ask audits and hardens the *end-user application* — specifically its cryptography and its own DNS test methodology. This NLnet ask extracts two already-working *detection techniques* into standalone, published, reusable modules other projects can adopt — a different artifact, a different audit surface, and no shared milestone between the two. I will provide the OTF concept note in full for cross-reference on request.
+No.
 
 ## Comparison with existing efforts
 
