@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from connect_core import TorSession, bridge_lines, configuration
+from connect_core import ConnectError, TorSession, bridge_lines, configuration
 
 OBFS4 = "obfs4 192.0.2.2:443 " + "a" * 40 + " cert=YWJj iat-mode=0"
 WEBTUNNEL = "webtunnel [2001:db8::2]:443 " + "b" * 40 + " url=https://bridge.example/path ver=0.0.1"
@@ -77,8 +77,9 @@ class SessionTests(unittest.TestCase):
     def test_timeout_clears_previous_verification_without_fallback(self, run):
         self.session.verified = True
         run.side_effect = subprocess.TimeoutExpired("curl", 40)
-        with self.assertRaises(subprocess.TimeoutExpired):
+        with self.assertRaises(ConnectError) as raised:
             self.session.check_connection()
+        self.assertEqual(raised.exception.code, "route_check")
         self.assertFalse(self.session.verified)
         self.assertEqual(run.call_count, 1)
 

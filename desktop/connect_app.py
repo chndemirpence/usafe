@@ -1,21 +1,22 @@
 """USAFE Connect desktop entry point. Network work runs outside Tk's UI thread."""
 import atexit
-import json
 import os
 from pathlib import Path
 import queue
 import sys
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from connect_core import MODES, TorSession
+from connect_help import ADVICE, GUIDE, OUTCOMES, DIFFICULTIES, attempt_record, connection_report, error_code, recovery_method
 from web_launch import is_enabled, mark_window, register_launcher, show_existing_window
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 INSTALL_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else ROOT
 APP_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "USAFE/Connect"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 BACKGROUND = "#0a161a"
 SURFACE = "#122529"
 FIELD = "#0d1d21"
@@ -45,6 +46,21 @@ COPY = {
         "website_enable": "Enable website launch", "website_enabled": "Website launch enabled",
         "website_done": "You can now open this window from the Connect section on the USAFE website.",
         "offline": "Disconnected",
+        "guide": "Offline connection guide", "close": "Close", "save": "Save this summary",
+        "summary": "Your connection summary", "summary_intro": "Preview exactly what you save. Nothing is sent automatically.",
+        "feedback": "Optional: how did your task go?", "difficulty": "Where did you need help?",
+        "outcomes": ("Skip this question", "I completed my task", "I needed help", "I could not complete my task"),
+        "difficulties": ("Skip this question", "No difficulty", "Connecting", "Setting up a bridge", "Opening the browser", "Understanding what is protected"),
+        "try_obfs4": "Try obfs4 instead", "try_snowflake": "Try Snowflake instead", "try_custom": "Set up a fresh bridge",
+        "elapsed": "Connecting for {seconds}s", "checked": "Last verified {seconds}s ago",
+        "steps": "1  Choose a bridge   →   2  Verify access   →   3  Open browser",
+        "stage_start": "Starting the bridge connection", "stage_bridge": "Reaching the Tor network",
+        "stage_circuit": "Building a route through Tor", "stage_verify": "Checking HTTPS access through Tor",
+        "stage_wait": "Some networks take longer. You can disconnect at any time.",
+        "local_only": "Local preview · No automatic upload",
+        "history": "Connection attempts (up to 10)", "no_attempts": "No completed attempts in this app session.",
+        "route_verified": "Route currently verified", "yes": "Yes", "no": "No",
+        "verified": "Verified", "failed": "Could not connect", "cancelled": "Stopped by you",
     },
     "tr": {
         "tagline": "Tor köprüsüyle internete bağlan", "intro": "Bir köprü seçip bağlan, ardından Tor Browser’ı aç.",
@@ -66,6 +82,21 @@ COPY = {
         "website_enable": "Siteden açmayı etkinleştir", "website_enabled": "Siteden açma etkin",
         "website_done": "Bu pencereyi artık USAFE sitesindeki Connect bölümünden açabilirsin.",
         "offline": "Bağlantı kesildi",
+        "guide": "Çevrimdışı bağlantı rehberi", "close": "Kapat", "save": "Bu özeti kaydet",
+        "summary": "Bağlantı özetin", "summary_intro": "Kaydedeceğin bilgileri önceden gör. Hiçbir şey otomatik gönderilmez.",
+        "feedback": "İsteğe bağlı: işini tamamlayabildin mi?", "difficulty": "Nerede yardıma ihtiyaç duydun?",
+        "outcomes": ("Soruyu atla", "İşimi tamamladım", "Yardıma ihtiyaç duydum", "İşimi tamamlayamadım"),
+        "difficulties": ("Soruyu atla", "Zorluk yaşamadım", "Bağlantı kurma", "Köprü ayarlama", "Tarayıcı açma", "Bağlantı kapsamını anlama"),
+        "try_obfs4": "obfs4 ile dene", "try_snowflake": "Snowflake ile dene", "try_custom": "Yeni köprü ayarla",
+        "elapsed": "Bağlantı süresi: {seconds} sn", "checked": "Son doğrulama: {seconds} sn önce",
+        "steps": "1  Köprü seç   →   2  Erişimi doğrula   →   3  Tarayıcıyı aç",
+        "stage_start": "Köprü bağlantısı başlatılıyor", "stage_bridge": "Tor ağına ulaşılıyor",
+        "stage_circuit": "Tor üzerinden bağlantı yolu kuruluyor", "stage_verify": "Tor üzerinden HTTPS erişimi kontrol ediliyor",
+        "stage_wait": "Bazı ağlarda daha uzun sürebilir. İstediğin zaman bağlantıyı kesebilirsin.",
+        "local_only": "Yerel önizleme · Otomatik gönderim yok",
+        "history": "Bağlantı denemeleri (en fazla 10)", "no_attempts": "Bu uygulama oturumunda tamamlanmış deneme yok.",
+        "route_verified": "Bağlantı şu anda doğrulanmış", "yes": "Evet", "no": "Hayır",
+        "verified": "Doğrulandı", "failed": "Bağlanamadı", "cancelled": "Sen durdurdun",
     },
 }
 
@@ -86,6 +117,11 @@ class App:
         self.user_stopped = False
         self.current_state = "ready"
         self.progress = 0
+        self.issue = None
+        self.attempt_started = None
+        self.attempt_mode = None
+        self.checked_at = None
+        self.attempts = []
         self.labels = []
         self.stacked = None
         self.launcher_enabled = getattr(sys, "frozen", False) and is_enabled(Path(sys.executable))
@@ -128,8 +164,9 @@ class App:
         lang.current(0)
         lang.pack(side="right")
         lang.bind("<<ComboboxSelected>>", lambda _: self.select_language(lang.current()))
-        self.label(main, "tagline", size=28, bold=True, pady=(22, 4))
-        self.label(main, "intro", size=11, color=MUTED, pady=(0, 22))
+        self.label(main, "tagline", size=24, bold=True, pady=(14, 4))
+        self.label(main, "intro", size=11, color=MUTED, pady=(0, 10))
+        self.label(main, "steps", size=10, color=ACCENT, pady=(0, 12))
 
         self.panels = tk.Frame(main, bg=BACKGROUND)
         self.panels.pack(fill="x")
@@ -174,8 +211,10 @@ class App:
         self.status = self.label(status_copy, None, size=14, bold=True)
         self.detail = self.label(self.status_card, None, size=10, color=MUTED)
         self.detail.pack_forget()
+        self.timing = self.label(self.status_card, None, size=10, color=MUTED, pady=(0, 8))
         self.check_button = self.button(self.status_card, "verify", self.recheck)
         self.check_button.pack(fill="x")
+        self.recovery_button = self.button(self.status_card, "try_obfs4", self.recover, primary=True)
 
         browser = self.card(main)
         browser.pack(fill="x", pady=(14, 0))
@@ -190,13 +229,22 @@ class App:
         self.label(main, "scope", size=10, color=MUTED, pady=(16, 7))
         footer = tk.Frame(main, bg=BACKGROUND)
         footer.pack(fill="x")
-        self.button(footer, "report", self.export_summary).pack(side="left", padx=(0, 8))
+        self.report_button = self.button(footer, "report", self.export_summary)
+        self.guide_button = self.button(footer, "guide", self.show_guide)
+        def arrange_footer(event):
+            stacked = event.width < 650
+            self.report_button.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 7))
+            self.guide_button.grid(row=1 if stacked else 0, column=0 if stacked else 1, sticky="w", pady=(0, 7))
+        footer.bind("<Configure>", arrange_footer)
         if getattr(sys, "frozen", False):
             self.launcher_button = self.button(footer, "website_enable", self.enable_website_launch)
-            self.launcher_button.pack(side="left")
+            self.launcher_button.grid(row=2, column=0, columnspan=2, sticky="w")
+        tk.Label(footer, text="USAFE Connect  " + VERSION, fg=MUTED, bg=BACKGROUND,
+                 font=("Segoe UI", 9)).grid(row=3, column=0, columnspan=2, sticky="e")
         self.translate()
         self.refresh_controls()
         self.root.after(150, self.poll)
+        self.root.after(1000, self.tick)
 
     @property
     def busy(self):
@@ -268,6 +316,56 @@ class App:
         )
         self.browser_help.configure(text=words[browser_hint])
         self.render_status()
+        self.render_guidance()
+
+    def render_guidance(self):
+        words = COPY[self.language.get()]
+        if self.current_state == "error":
+            advice = ADVICE.get(self.issue, ADVICE["unknown"])
+            self.set_detail(getattr(advice, self.language.get()))
+        elif self.current_state in ("connecting", "verifying"):
+            stage = "stage_verify" if self.current_state == "verifying" else (
+                "stage_circuit" if self.progress >= 80 else "stage_bridge" if self.progress >= 10 else "stage_start")
+            hint = words[stage]
+            if self.attempt_started is not None and time.monotonic() - self.attempt_started > 30:
+                hint += "\n" + words["stage_wait"]
+            self.set_detail(hint)
+        else:
+            self.set_detail()
+        next_mode = recovery_method(self.issue, self.mode.get()) if self.current_state == "error" else None
+        if next_mode:
+            self.recovery_button.configure(text=words["try_" + next_mode])
+            self.recovery_button.pack(fill="x", pady=(8, 0))
+            self.button_state(self.recovery_button, not self.busy)
+        else:
+            self.recovery_button.pack_forget()
+        if self.current_state == "connected" and self.checked_at is not None:
+            text = words["checked"].format(seconds=int(time.monotonic() - self.checked_at))
+        elif self.current_state in ("connecting", "verifying") and self.attempt_started is not None:
+            text = words["elapsed"].format(seconds=int(time.monotonic() - self.attempt_started))
+        else:
+            text = ""
+        self.timing.configure(text=text)
+
+    def tick(self):
+        self.render_guidance()
+        self.root.after(1000, self.tick)
+
+    def finish_attempt(self, outcome, code=None):
+        if self.attempt_started is not None:
+            self.attempts.append(attempt_record(self.attempt_mode, outcome, self.progress,
+                                               time.monotonic() - self.attempt_started, code))
+            self.attempts = self.attempts[-10:]
+            self.attempt_started = None
+
+    def recover(self):
+        next_mode = recovery_method(self.issue, self.mode.get())
+        if self.busy or not next_mode:
+            return
+        # A failed verification may leave Tor running. Finish teardown first.
+        # The next attempt starts only after all old worker events are drained.
+        self.pending_method = next_mode
+        self.stop()
 
     def render_status(self):
         state = self.current_state
@@ -321,7 +419,7 @@ class App:
             try:
                 action()
             except Exception as error:
-                self.events.put({"state": "error", "message": str(error), "stopping": stopping})
+                self.events.put({"state": "error", "code": error_code(error), "stopping": stopping})
             finally:
                 self.events.put({"done": True})
         threading.Thread(target=run, daemon=True).start()
@@ -329,9 +427,16 @@ class App:
     def connect(self):
         if self.busy or self.active():
             return
+        # A terminated child can still own the profile lock until cleanup.
+        if self.session.process is not None or self.session.instance_lock is not None:
+            self.session.stop()
         self.user_stopped = False
         self.session = TorSession(ROOT / "runtime", APP_DIR)
         mode = self.mode.get()
+        self.issue = None
+        self.checked_at = None
+        self.attempt_mode = mode
+        self.attempt_started = time.monotonic()
         bridges = self.bridges.get("1.0", "end")
         self.set_detail()
         self.current_state = "connecting"
@@ -344,6 +449,8 @@ class App:
         if self.user_stopped and self.busy:
             return
         self.user_stopped = True
+        self.finish_attempt("cancelled", "cancelled")
+        self.checked_at = None
         self.session.cancelled.set()
         self.current_state = "stopping"
         self.set_detail()
@@ -352,8 +459,9 @@ class App:
         self.refresh_controls()
 
     def recheck(self):
-        if self.busy:
+        if self.busy or not self.active():
             return
+        self.checked_at = None
         self.current_state = "verifying"
         self.set_detail()
         self.translate()
@@ -387,18 +495,112 @@ class App:
         except Exception as error:
             messagebox.showerror("USAFE Connect", str(error))
 
+    def dialog(self, title):
+        window = tk.Toplevel(self.root)
+        window.title(title)
+        window.configure(bg=BACKGROUND, padx=20, pady=20)
+        width = min(700, self.root.winfo_screenwidth() - 60)
+        height = min(650, self.root.winfo_screenheight() - 100)
+        x = max(0, self.root.winfo_rootx() + (self.root.winfo_width() - width) // 2)
+        y = max(0, self.root.winfo_rooty() + (self.root.winfo_height() - height) // 2)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        if (ROOT / "assets/usafe.ico").is_file():
+            window.iconbitmap(str(ROOT / "assets/usafe.ico"))
+        window.minsize(480, 400)
+        window.transient(self.root)
+        window.bind("<Escape>", lambda _: window.destroy())
+        return window
+
+    def show_guide(self):
+        words = COPY[self.language.get()]
+        window = self.dialog(words["guide"])
+        selector = ttk.Combobox(window, values=[title for title, _ in GUIDE[self.language.get()]], state="readonly",
+                                font=("Segoe UI", 11))
+        selector.pack(fill="x", pady=(0, 14))
+        selector.current(0)
+        area = tk.Frame(window, bg=SURFACE)
+        area.pack(fill="both", expand=True)
+        body = tk.Text(area, wrap="word", bg=SURFACE, fg=TEXT, font=("Segoe UI", 12),
+                       padx=18, pady=18, relief="flat", width=1, height=8)
+        scrollbar = ttk.Scrollbar(area, command=body.yview)
+        scrollbar.pack(side="right", fill="y")
+        body.configure(yscrollcommand=scrollbar.set)
+        body.pack(side="left", fill="both", expand=True)
+        # Freeze the dialog language. Main-window translation cannot leave half a
+        # dialog in another language or retain destroyed widgets in self.labels.
+        entries = GUIDE[self.language.get()]
+        def select(_=None):
+            body.configure(state="normal")
+            body.delete("1.0", "end")
+            body.insert("1.0", entries[selector.current()][1])
+            body.configure(state="disabled")
+            body.yview_moveto(0)
+        selector.bind("<<ComboboxSelected>>", select)
+        select()
+        tk.Button(window, text=words["close"], command=window.destroy, bg=ACCENT, fg=BACKGROUND,
+                  relief="flat", padx=20, pady=8, font=("Segoe UI", 10, "bold")).pack(anchor="e", pady=(14, 0))
+
     def export_summary(self):
-        path = filedialog.asksaveasfilename(defaultextension=".json", initialfile="usafe-connection-summary.json", filetypes=[("JSON", "*.json")])
-        if path:
-            report = {"app": "USAFE Connect", "version": VERSION, "platform": "Windows", "transport": self.session.mode,
-                      "bootstrap_percent": self.session.progress, "tor_https_verified": self.session.verified,
-                      "scope": "USAFE-managed Tor session"}
-            try:
-                Path(path).write_text(json.dumps(report, indent=2), encoding="utf-8")
-            except OSError as error:
-                messagebox.showerror("USAFE Connect", str(error))
-            else:
-                messagebox.showinfo("USAFE Connect", COPY[self.language.get()]["report_done"])
+        language = self.language.get()
+        words = COPY[language]
+        window = self.dialog(words["summary"])
+        tk.Label(window, text=words["summary_intro"], fg=TEXT, bg=BACKGROUND,
+                 wraplength=430, justify="left", font=("Segoe UI", 11)).pack(anchor="w", pady=(0, 12))
+        choices = []
+        for label, values in (("feedback", "outcomes"), ("difficulty", "difficulties")):
+            tk.Label(window, text=words[label], fg=MUTED, bg=BACKGROUND, font=("Segoe UI", 10)).pack(anchor="w")
+            choice = ttk.Combobox(window, values=words[values], state="readonly", font=("Segoe UI", 10))
+            choice.current(0)
+            choice.pack(fill="x", pady=(4, 10))
+            choices.append(choice)
+        area = tk.Frame(window, bg=FIELD)
+        area.pack(fill="both", expand=True)
+        body = tk.Text(area, wrap="word", bg=FIELD, fg=TEXT, font=("Segoe UI", 11),
+                       padx=12, pady=12, relief="flat", width=1, height=8)
+        scrollbar = ttk.Scrollbar(area, command=body.yview)
+        scrollbar.pack(side="right", fill="y")
+        body.configure(yscrollcommand=scrollbar.set)
+        body.pack(side="left", fill="both", expand=True)
+        # Snapshot now, so the saved document is exactly the displayed preview.
+        attempts = list(self.attempts)
+        verified, state = self.session.verified and self.active(), self.current_state
+        def preview(_=None):
+            report = connection_report(VERSION, attempts, verified, state,
+                                       OUTCOMES[choices[0].current()], DIFFICULTIES[choices[1].current()])
+            body.configure(state="normal")
+            body.delete("1.0", "end")
+            lines = [f"USAFE Connect {report['version']} · Windows", words["scope"], "",
+                     words["status_title"] + ": " + words.get(report["state"], report["state"]),
+                     words["route_verified"] + ": " + words["yes" if report["current_route_verified"] else "no"],
+                     "", words["history"]]
+            for index, attempt in enumerate(report["attempts"], 1):
+                method = words["custom"] if attempt["transport"] == "custom" else attempt["transport"]
+                lines.append(f"{index}. {method} · {words[attempt['outcome']]} · {attempt['bootstrap_percent']}% · ~{attempt['elapsed_seconds_rounded']}s")
+                if attempt["issue"]:
+                    lines.append(getattr(ADVICE[attempt["issue"]], language))
+            if not report["attempts"]:
+                lines.append(words["no_attempts"])
+            lines.extend(["", words["feedback"], words["outcomes"][choices[0].current()], "",
+                          words["difficulty"], words["difficulties"][choices[1].current()]])
+            body.insert("1.0", "\n".join(lines))
+            body.configure(state="disabled")
+        for choice in choices:
+            choice.bind("<<ComboboxSelected>>", preview)
+        preview()
+        def save():
+            path = filedialog.asksaveasfilename(parent=window, defaultextension=".txt",
+                                               initialfile="usafe-connection-summary.txt", filetypes=[("Text", "*.txt")])
+            if path:
+                try:
+                    Path(path).write_text(body.get("1.0", "end-1c") + "\n", encoding="utf-8")
+                except OSError as error:
+                    messagebox.showerror("USAFE Connect", str(error), parent=window)
+                else:
+                    messagebox.showinfo("USAFE Connect", words["report_done"], parent=window)
+        tk.Label(window, text=words["local_only"], bg=BACKGROUND, fg=MUTED,
+                 font=("Segoe UI", 10)).pack(anchor="w", pady=10)
+        tk.Button(window, text=words["save"], command=save, bg=ACCENT, fg=BACKGROUND,
+                  relief="flat", padx=20, pady=8, font=("Segoe UI", 10, "bold")).pack(anchor="e")
 
     def poll(self):
         try:
@@ -414,13 +616,36 @@ class App:
                 elif not self.user_stopped or event.get("stopping"):
                     self.current_state = event["state"]
                     self.progress = event.get("progress", self.progress)
-                    if event.get("message"):
-                        self.set_detail(event["message"])
+                    if self.current_state == "error":
+                        self.issue = event.get("code", "unknown")
+                        self.checked_at = None
+                        self.finish_attempt("failed", self.issue)
+                    elif self.current_state == "connected":
+                        self.checked_at = time.monotonic()
+                        self.issue = None
+                        self.finish_attempt("verified")
                 self.translate()
         except queue.Empty:
             pass
-        if not self.busy and self.session.process is not None and not self.active():
-            self.stop()
+        if not self.busy and self.session.process is not None and not self.active() and self.current_state != "error":
+            self.session.verified = False
+            self.current_state = "error"
+            self.issue = "tor_stopped"
+            self.checked_at = None
+            self.translate()
+            self.refresh_controls()
+        if not self.busy and getattr(self, "pending_method", None) and not self.closing:
+            mode = self.pending_method
+            self.pending_method = None
+            self.mode.set(mode)
+            self.issue = None
+            self.current_state = "ready"
+            self.translate()
+            self.refresh_controls()
+            if mode != "custom":
+                self.connect()
+            else:
+                self.bridges.focus_set()
         if self.closing and not self.busy and self.session.process is None:
             self.root.destroy()
         else:
@@ -428,6 +653,7 @@ class App:
 
     def close(self):
         self.closing = True
+        self.pending_method = None
         self.stop()
 
 

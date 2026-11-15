@@ -1,4 +1,4 @@
-# USAFE Connect — Windows preview 0.1.1
+# USAFE Connect — Windows preview 0.1.2
 
 USAFE Connect adds an actual bridge-based Tor connection to the USAFE toolkit.
 It starts the official Tor client, verifies HTTPS egress, and opens the official
@@ -15,6 +15,17 @@ and the existing USAFE web toolkit in separate tabs.
 4. Click **Open Tor Browser**. The included, unmodified portable Tor Browser is
    selected automatically. Close an already running Tor Browser before this step.
 5. Browse inside that window. **Disconnect** closes the managed Tor connection.
+
+If a connection needs attention, the status card explains the next step in your
+chosen language. **Try obfs4 instead** finishes the old session before starting
+the alternative. **Set up a fresh bridge** switches to Custom and waits for your
+input. Runtime integrity or profile ownership problems do not trigger transport
+switching. The status shows elapsed time and the age of the last successful
+route check; verification is a point-in-time check, not continuous monitoring.
+
+**Offline connection guide** is bundled in English and Turkish and works without
+internet access. **Save connection summary** first opens an exact preview with
+optional fixed-choice feedback. Saving never sends it to ArgoDelta or anyone else.
 
 To open the desktop window from [USAFE](https://www.argodelta.com/tools/usafe/#connect),
 click **Enable website launch** in the desktop app once. Then use **Open Windows app**
@@ -41,10 +52,14 @@ an abrupt power loss can leave temporary files behind. This is not a disk
 forensics protection feature. A private bridge address must still be contacted
 to establish a connection.
 
-Raw Tor/transport logs are discarded. **Save connection summary** exports only
-the application version, Windows platform, chosen method, bootstrap percentage,
-verification result and connection scope. It does not export IP addresses,
-bridge lines, browsing URLs or control cookies. There is no background telemetry.
+Raw Tor/transport logs are discarded. The app keeps up to ten attempt summaries
+in memory until exit. The export contains version, platform, method, progress,
+rounded elapsed seconds, a fixed issue/outcome category, verification state,
+scope and optional fixed-choice feedback. It excludes IP addresses, bridge lines,
+browsing URLs, control cookies, raw exceptions and precise timestamps. There is
+no background telemetry. A saved summary still reveals use of USAFE; review it
+and choose whether to share it. No participant recruitment or field results are
+implied by adding this export.
 
 ## Build from source
 
@@ -53,9 +68,9 @@ isolated Python build environment. Run commands from this directory:
 
 ```powershell
 python prepare_runtime.py --cache C:\build-cache\usafe
-python -m unittest -v test_connect_core.py
+python -m unittest discover -v
 python -m pip install -r requirements-build.txt
-python build_windows.py --dist dist\windows-0.1.1-x64
+python build_windows.py --dist dist\windows-0.1.2-x64
 ```
 
 `prepare_runtime.py` pins Tor Expert Bundle 16.0.1, its SHA-256 digest and the Tor
@@ -65,7 +80,7 @@ digests. The controller checks critical executable/configuration digests before
 each connection. These digests detect unexpected file changes; they do not make
 an unsigned USAFE build into a publisher-signed release.
 
-The executable is generated in `dist/windows-0.1.1-x64/USAFE Connect/`. Put the
+The executable is generated in `dist/windows-0.1.2-x64/USAFE Connect/`. Put the
 verified portable Tor Browser beside the executable in `Tor Browser/`, with
 `Browser/firefox.exe` inside. The preparation script can verify and extract it
 with `--browser-dir` while preparing a fresh runtime.
@@ -82,6 +97,11 @@ disconnect. Local-network success does not establish availability under every
 censorship regime. A new session should be used after stopping a TorSession.
 
 ## Integration and next release
+
+The implementation/evidence stages are in [ROADMAP.md](ROADMAP.md), the voluntary
+user study in [PILOT.md](PILOT.md), and the update/review plan in
+[MAINTENANCE.md](MAINTENANCE.md). These distinguish completed development from
+work requiring participants, a signing identity or an independent reviewer.
 
 The MIT-licensed controller is separate from the existing browser-only USAFE
 modules, which remain intact. Tor/transport implementations are upstream projects;

@@ -21,6 +21,14 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 MODES = ("snowflake", "obfs4", "custom")
 
 
+class ConnectError(RuntimeError):
+    """Stable UI category; never use exception text as telemetry."""
+
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+
+
 def bridge_lines(text: str) -> list[str]:
     """Accept transport bridge lines, never arbitrary torrc directives."""
     if len(text) > 16000:
@@ -129,14 +137,17 @@ class TorSession:
             msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError as error:
             handle.close()
-            raise RuntimeError("Another USAFE connection is using this profile. Close it first.") from error
+            raise ConnectError("profile_busy", "Another USAFE connection is using this profile. Close it first.") from error
         self.instance_lock = handle
 
     def _verify_runtime(self):
-        manifest = json.loads((self.runtime / "verified-files.json").read_text())
-        for name in ("tor/tor.exe", "tor/pluggable_transports/lyrebird.exe", "tor/pluggable_transports/pt_config.json"):
-            if hashlib.sha256((self.runtime / name).read_bytes()).hexdigest() != manifest["files"].get(name):
-                raise RuntimeError("The Tor bundle has changed. Restore the verified runtime before connecting.")
+        try:
+            manifest = json.loads((self.runtime / "verified-files.json").read_text())
+            for name in ("tor/tor.exe", "tor/pluggable_transports/lyrebird.exe", "tor/pluggable_transports/pt_config.json"):
+                if hashlib.sha256((self.runtime / name).read_bytes()).hexdigest() != manifest["files"].get(name):
+                    raise ConnectError("runtime", "The Tor bundle has changed. Restore the verified runtime before connecting.")
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            raise ConnectError("runtime", "The verified Tor runtime is incomplete.") from error
 
     def _read_reply(self, stream):
         lines = []
@@ -175,9 +186,12 @@ class TorSession:
             if self.process and self.process.poll() is None:
                 raise RuntimeError("A connection is already running.")
             if self.cancelled.is_set():
-                raise RuntimeError("Connection cancelled.")
+                raise ConnectError("cancelled", "Connection cancelled.")
             self._verify_runtime()
-            config = configuration(self.runtime, self.state_dir, mode, custom)
+            try:
+                config = configuration(self.runtime, self.state_dir, mode, custom)
+            except ValueError as error:
+                raise ConnectError("bridge_input" if mode == "custom" else "runtime", str(error)) from error
             self._acquire_instance()
             try:
                 (self.state_dir / "control.port").unlink(missing_ok=True)
@@ -202,9 +216,9 @@ class TorSession:
         try:
             while time.monotonic() < deadline:
                 if self.cancelled.wait(0.3):
-                    raise RuntimeError("Connection cancelled.")
+                    raise ConnectError("cancelled", "Connection cancelled.")
                 if process.poll() is not None:
-                    raise RuntimeError("Tor stopped. Check the bundle and try another bridge.")
+                    raise ConnectError("tor_stopped", "Tor stopped. Check the bundle and try another bridge.")
                 if self.progress != last_progress:
                     last_progress = self.progress
                     notify({"state": "connecting", "progress": self.progress})
@@ -226,7 +240,7 @@ class TorSession:
                     self.check_connection()
                     notify({"state": "connected", "progress": 100})
                     return
-            raise RuntimeError("This transport did not connect in time. Try another transport or a fresh bridge.")
+            raise ConnectError("timeout", "This transport did not connect in time. Try another transport or a fresh bridge.")
         except Exception:
             self.stop()
             raise
@@ -238,6 +252,12 @@ class TorSession:
         if not process or process.poll() is not None or not self.socks_port:
             raise RuntimeError("Connect before checking the route.")
         curl = Path(os.environ.get("SystemRoot", "C:/Windows")) / "System32/curl.exe"
+        try:
+            return self._check_https_route(curl, process)
+        except subprocess.TimeoutExpired as error:
+            raise ConnectError("route_check", "The HTTPS route check timed out.") from error
+
+    def _check_https_route(self, curl, process):
         result = subprocess.run([
             str(curl), "--disable", "--silent", "--show-error", "--fail", "--proxy",
             f"socks5h://127.0.0.1:{self.socks_port}", "--noproxy", "", "--proto", "=https",
@@ -245,13 +265,13 @@ class TorSession:
             "https://check.torproject.org/api/ip",
         ], capture_output=True, timeout=40, creationflags=NO_WINDOW)
         if result.returncode:
-            raise RuntimeError("Tor is bootstrapped, but the HTTPS route check failed. Retry or change transport.")
+            raise ConnectError("route_check", "Tor is bootstrapped, but the HTTPS route check failed. Retry or change transport.")
         try:
             valid = json.loads(result.stdout).get("IsTor") is True
         except (ValueError, AttributeError):
             valid = False
         if not valid:
-            raise RuntimeError("The route check did not confirm a Tor exit.")
+            raise ConnectError("route_check", "The route check did not confirm a Tor exit.")
         with self.lock:
             if self.cancelled.is_set() or self.process is not process or process.poll() is not None:
                 raise RuntimeError("Connection stopped.")
