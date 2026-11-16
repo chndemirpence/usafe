@@ -20,6 +20,14 @@ BROWSER_SHA256 = "fbef840ba111409213dec2291e3594a43b82525545cdef0490a5750f24f5f2
 BASE = f"https://dist.torproject.org/torbrowser/{VERSION}/"
 
 
+def gpg_path(gpg, path):
+    """Git's MSYS GPG expects drive mounts for --homedir on hosted Windows."""
+    absolute = Path(path).resolve().as_posix()
+    if "/git/usr/bin/" in str(gpg).replace("\\", "/").lower() and len(absolute) > 2 and absolute[1] == ":":
+        return "/" + absolute[0].lower() + absolute[2:]
+    return absolute
+
+
 def sha256(path):
     with Path(path).open("rb") as source:
         return hashlib.file_digest(source, "sha256").hexdigest()
@@ -46,7 +54,7 @@ def fetch(url, path, limit):
 
 def verify(gpg, home, artifact):
     result = subprocess.run(
-        [gpg, "--homedir", str(home), "--batch", "--status-fd", "1", "--verify", str(artifact) + ".asc", str(artifact)],
+        [gpg, "--homedir", gpg_path(gpg, home), "--batch", "--status-fd", "1", "--verify", gpg_path(gpg, artifact) + ".asc", gpg_path(gpg, artifact)],
         capture_output=True, text=True, timeout=60,
     )
     valid = [line.split() for line in result.stdout.splitlines() if line.startswith("[GNUPG:] VALIDSIG ")]
@@ -63,7 +71,7 @@ def prepare(cache, destination, gpg, browser_dir=None):
         artifacts.append((BROWSER, BROWSER_SHA256, 200 * 1024 * 1024))
     with tempfile.TemporaryDirectory(prefix="usafe-signature-") as folder:
         home = Path(folder)
-        imported = subprocess.run([gpg, "--homedir", str(home), "--batch", "--import", str(key)], capture_output=True, text=True, timeout=60)
+        imported = subprocess.run([gpg, "--homedir", gpg_path(gpg, home), "--batch", "--import", gpg_path(gpg, key)], capture_output=True, text=True, timeout=60)
         if imported.returncode:
             raise RuntimeError("Public signing key import failed: " + imported.stderr.strip()[:2000])
         for name, digest, limit in artifacts:
