@@ -4,3 +4,9 @@ build/
 dist/
 runtime/
 *.spec
+*.pfx
+*.p12
+*.pem
+*.key
+signing-private/
+update-state/

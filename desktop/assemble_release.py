@@ -22,7 +22,7 @@ def assemble(package, cache, evidence, version):
         verify("C:/Program Files/Git/usr/bin/gpg.exe", cache / "gpg", cache / filename)
     source = package / "Source"
     source.mkdir()
-    for pattern in ("*.py", "*.md", "requirements-build.txt"):
+    for pattern in ("*.py", "*.md", "*.ps1", "requirements*.txt"):
         for file in source_root.glob(pattern):
             shutil.copy2(file, source / file.name)
     shutil.copytree(source_root / "assets", source / "assets")

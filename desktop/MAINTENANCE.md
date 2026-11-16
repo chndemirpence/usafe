@@ -4,6 +4,12 @@ Status: build preparation verifies pinned upstream signatures and checksums.
 Publisher Authenticode signing and an authenticated automatic update channel
 are planned, not delivered by the 0.1.2 usability release.
 
+16 November implementation: authenticated update verification, safe separate
+staging, Windows cache-only signature checks and signed publication tooling are
+implemented in source. See UPDATE-SECURITY.md for test evidence and activation
+gates. A production root/certificate, live repository, desktop flow and next-launch
+activation helper remain to be provisioned/integrated; the public app is unchanged.
+
 ## Current trust boundary
 
 The controller starts upstream Tor and an unmodified Tor Browser. Tor SOCKS and

@@ -91,3 +91,9 @@ locally tested behaviour, planned work and independently validated evidence.
   planned. The review utility is source tooling added after the 0.1.2 package.
 - Stages 3–5: protocols/plans prepared. External reviewers, code-signing identity, participants and
   a physical Android device have not been obtained by writing this plan.
+
+16 November stage 2 increment: TUF verification and publication delta, separate
+package staging, Authenticode cached-only validation and signing script added.
+59 desktop tests pass, including 21 new update/publication cases. Production
+credentials, user-facing integration and next-launch activation are still pending;
+see UPDATE-SECURITY.md. Do not mark stage 2 complete until its release gate passes.
