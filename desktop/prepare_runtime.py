@@ -51,7 +51,7 @@ def verify(gpg, home, artifact):
     )
     valid = [line.split() for line in result.stdout.splitlines() if line.startswith("[GNUPG:] VALIDSIG ")]
     if result.returncode != 0 or not any(parts[-1] == SIGNER for parts in valid):
-        raise RuntimeError("Tor signature verification failed. Nothing will be extracted or executed.")
+        raise RuntimeError("Tor signature verification failed. Nothing will be extracted or executed. " + result.stderr.strip()[:2000])
 
 
 def prepare(cache, destination, gpg, browser_dir=None):
@@ -63,7 +63,9 @@ def prepare(cache, destination, gpg, browser_dir=None):
         artifacts.append((BROWSER, BROWSER_SHA256, 200 * 1024 * 1024))
     with tempfile.TemporaryDirectory(prefix="usafe-signature-") as folder:
         home = Path(folder)
-        subprocess.run([gpg, "--homedir", str(home), "--batch", "--import", str(key)], capture_output=True, timeout=60)
+        imported = subprocess.run([gpg, "--homedir", str(home), "--batch", "--import", str(key)], capture_output=True, text=True, timeout=60)
+        if imported.returncode:
+            raise RuntimeError("Public signing key import failed: " + imported.stderr.strip()[:2000])
         for name, digest, limit in artifacts:
             fetch(BASE + name, cache / name, limit)
             fetch(BASE + name + ".asc", cache / (name + ".asc"), 64 * 1024)
