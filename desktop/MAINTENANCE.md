@@ -15,6 +15,25 @@ the controller's protection. In-memory summaries are minimized, not anonymous.
 
 ## Release checklist and owner
 
+### Run the upstream version review before release preparation
+
+From `desktop/`, run `python check_upstream.py --output review-YYYYMMDD.json`.
+The command contacts the official Windows x64 release feed and expert-bundle
+download page on the maintainer's machine. It never runs inside the user app,
+downloads executables, modifies runtime pins or interrupts a connection. It
+preserves prior reports by refusing to overwrite an output file.
+
+Exit 0 means both published stable versions match the current pin. Exit 2 means
+review is required: a newer version, inconsistent upstream versions, metadata
+older than the current pin, or an unsuccessful check. A failed lookup is never
+reported as current. Version comparison does not replace security-advisory
+review or signature/checksum verification in `prepare_runtime.py`.
+
+The 16 November 2026 review matched Tor Browser and Tor Expert Bundle 16.0.1.
+Seven fixture tests cover version/platform validation, signature-link presence,
+numeric sorting, alpha exclusion, unexpected origins and redirect boundaries.
+This is maintainer tooling, not an automatic or authenticated update channel.
+
 The ArgoDelta/USAFE maintainer owns release review. Review upstream Tor Browser
 release/security announcements at least weekly and on each release preparation;
 record the version and date reviewed. Prioritize security fixes rather than
@@ -67,5 +86,6 @@ and re-testing in a funding proposal; no reviewer has been commissioned yet.
 ## References
 
 - https://support.torproject.org/tor-browser/getting-started/verifying-tor-browser/
-- https://www.torproject.org/releases/
+- https://aus1.torproject.org/torbrowser/update_3/release/download-windows-x86_64.json
+- https://download.torproject.org/tor/
 - https://theupdateframework.io/

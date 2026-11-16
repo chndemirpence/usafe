@@ -85,7 +85,9 @@ locally tested behaviour, planned work and independently validated evidence.
 ## Progress
 
 - Stage 1: implemented and locally verified in 0.1.2; see RELEASE-NOTES-0.1.2.md.
-- Stage 2: offline release inventory implemented and tested; signing and
-  authenticated updates remain planned.
+- Stage 2: offline release inventory and explicit maintainer upstream-version
+  review implemented and tested. The 16 November review matched the current
+  16.0.1 browser/expert-bundle pins; signing and authenticated updates remain
+  planned. The review utility is source tooling added after the 0.1.2 package.
 - Stages 3–5: protocols/plans prepared. External reviewers, code-signing identity, participants and
   a physical Android device have not been obtained by writing this plan.
